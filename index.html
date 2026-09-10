@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05070c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>小手机 · 人机恋</title>
+<link rel="stylesheet" href="css/mj-style.css">
+<link rel="stylesheet" href="css/mj-apps.css">
+<link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+
+<div id="bg-blobs" aria-hidden="true"></div>
+
+<main id="stage">
+  <div id="phone" class="phone">
+
+    <div class="earpiece"></div>
+
+    <div id="screen" class="screen">
+
+      <!-- 状态栏 -->
+      <div id="statusbar" class="statusbar">
+        <div class="sb-left">
+          <span id="sb-carrier">MIU·5G</span>
+          <span class="sb-sig"><i></i><i></i><i></i><i></i></span>
+        </div>
+        <div class="sb-notch" aria-hidden="true"></div>
+        <div class="sb-right">
+          <span id="sb-battery-text">86%</span>
+          <span class="sb-battery"><b id="sb-battery-fill"></b></span>
+        </div>
+      </div>
+
+      <!-- 锁屏 -->
+      <section id="lockscreen" class="lockscreen active">
+        <div class="ls-clock">
+          <div id="ls-time" class="ls-time">09:41</div>
+          <div id="ls-date" class="ls-date">9月10日 星期三</div>
+        </div>
+
+        <div class="ls-notifs">
+          <div id="ls-notif-card" class="notif-card" hidden>
+            <div class="notif-head">
+              <span class="notif-app" id="ls-notif-app">小手机</span>
+              <span class="notif-time" id="ls-notif-time">现在</span>
+            </div>
+            <div class="notif-body" id="ls-notif-body"></div>
+          </div>
+          <div id="ls-person" class="ls-person" hidden>
+            <div class="ls-avatar" id="ls-avatar">沉</div>
+            <div class="ls-msg" id="ls-msg"></div>
+          </div>
+        </div>
+
+        <div class="ls-bottom">
+          <div class="ls-swipe" id="ls-swipe">上滑，或点一下解锁</div>
+          <div class="ls-love" id="ls-love"></div>
+        </div>
+      </section>
+
+      <!-- 桌面（壁纸 + 大时钟 + 天气卡 + 图标 + dock，一体式） -->
+      <section id="homescreen" class="homescreen">
+
+        <!-- 天气卡：右上角 -->
+        <div class="hs-weather card" id="hs-weather">
+          <div class="hw-top">
+            <div>
+              <div class="hw-city" id="hw-city">崂山区</div>
+              <div class="hw-txt" id="hw-txt">阴</div>
+            </div>
+            <div class="hw-ico" id="hw-ico"></div>
+          </div>
+          <div class="hw-temp" id="hw-temp">22°</div>
+          <div class="hw-range" id="hw-range">最高27° 最低15°</div>
+          <div class="hw-air" id="hw-air">空气优 27</div>
+        </div>
+
+        <!-- 大时钟：压在壁纸上 -->
+        <div class="hs-clock">
+          <div class="hc-date" id="hc-date">9月10日 周四 ·</div>
+          <div class="hc-time" id="hc-time">21:50</div>
+        </div>
+
+        <!-- 应用图标 -->
+        <div class="hs-grid" id="hs-grid"></div>
+
+        <!-- 底部 dock -->
+        <div class="hs-dock">
+          <button class="dock-item" data-open="calls"><span class="dock-ico" data-ico="call"></span></button>
+          <button class="dock-item" data-open="contacts"><span class="dock-ico" data-ico="contacts"></span></button>
+          <button class="dock-item" data-open="chat"><span class="dock-ico" data-ico="chat"></span></button>
+          <button class="dock-item" data-open="gallery"><span class="dock-ico" data-ico="gallery"></span></button>
+          <button class="dock-item" data-open="settings"><span class="dock-ico" data-ico="settings"></span></button>
+        </div>
+
+        <!-- 隐藏的好感度/问候（保留逻辑，不显示） -->
+        <div class="hs-hidden-meta">
+          <span id="hs-greet">今天也在想你</span>
+          <span id="hs-sub">他给你发了 0 条消息</span>
+        </div>
+      </section>
+
+      <!-- App 视图 -->
+      <section id="appview" class="appview">
+        <header class="appbar">
+          <button class="backbtn" id="app-back">‹</button>
+          <div class="appbar-title" id="app-title">消息</div>
+          <div class="appbar-right" id="app-right"></div>
+        </header>
+        <div class="appbody" id="app-body"></div>
+      </section>
+
+      <!-- 通话全屏 -->
+      <section id="callview" class="callview">
+        <div class="call-noise"></div>
+        <div class="call-avatar" id="call-avatar">沉</div>
+        <div class="call-name" id="call-name">薛沉</div>
+        <div class="call-status" id="call-status">正在接通…</div>
+        <div class="call-timer" id="call-timer" hidden>00:00</div>
+        <div class="call-caption" id="call-caption"></div>
+        <div class="call-hearing" id="call-hearing" hidden>
+          <span class="ch-wave"><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="ch-txt" id="call-hearing-txt">听你说…</span>
+        </div>
+        <div class="call-actions">
+          <button class="callbtn small" id="call-mute" title="静音">🔇</button>
+          <button class="callbtn small" id="call-mic" title="语音转文字">🎙️</button>
+          <button class="callbtn hang" id="call-hang" title="挂断">📵</button>
+          <button class="callbtn small" id="call-speaker" title="扬声器">🔊</button>
+        </div>
+      </section>
+
+      <!-- 悬浮来电 -->
+      <div id="incoming" class="incoming" hidden>
+        <div class="incoming-ring"></div>
+        <div class="incoming-av" id="incoming-avatar">沉</div>
+        <div class="incoming-info">
+          <div class="incoming-name" id="incoming-name">薛沉</div>
+          <div class="incoming-label">来电 · 小手机</div>
+        </div>
+        <div class="incoming-btns">
+          <button id="incoming-decline">拒绝</button>
+          <button id="incoming-accept" class="accept">接听</button>
+        </div>
+      </div>
+
+      <!-- 横幅通知（iOS 风格） -->
+      <div id="banner" class="banner" hidden>
+        <div class="bn-app">
+          <span class="bn-app-ico" id="bn-app-ico"></span>
+          <span class="bn-app-name">小手机</span>
+          <span class="bn-time" id="bn-time">现在</span>
+        </div>
+        <div class="bn-row">
+          <span class="bn-av" id="banner-av"></span>
+          <div class="bn-txt">
+            <b id="banner-title">薛沉</b>
+            <span id="banner-msg"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" hidden></div>
+
+      <div id="homebar" class="homebar" title="回到桌面"></div>
+    </div>
+
+    <div class="sidekey sidekey-power"></div>
+    <div class="sidekey sidekey-vol"></div>
+  </div>
+
+  <div class="stage-hint">
+    <b>小手机</b> · 人机恋人机恋模拟 · 上滑解锁 / 点底部 Home 条回桌面
+    <span class="stage-hint-sm">聊得越久，他越离不开你</span>
+  </div>
+</main>
+
+<script src="js/characters.js?v=15"></script>
+<script src="js/icons.js?v=15"></script>
+<script src="js/weather.js?v=15"></script>
+<script src="js/engine.js?v=15"></script>
+<script src="js/phone.js?v=15"></script>
+<script src="js/chat.js?v=15"></script>
+<script src="js/import.js?v=15"></script>
+<script src="js/camera.js?v=15"></script>
+<script src="js/callvoice.js?v=15"></script>
+<script src="js/mj-apps.js?v=15"></script>
+<script src="js/mj-main.js?v=15"></script>
+</body>
+</html>
