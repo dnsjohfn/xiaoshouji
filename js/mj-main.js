@@ -128,10 +128,20 @@
     if (e.cancelable) e.preventDefault();
   }, { passive: false });
 
-  /* ---- ⑥ 地址栏收起时更新视口高度（补 dvh 的旧浏览器） ---- */
+  /* ---- ⑥ 地址栏收起时更新视口高度（补 dvh 的旧浏览器） ----
+     注意：键盘弹出时 visualViewport.height 会大幅缩小（844→400），
+     如果这时更新 --vh，整个手机就会被压扁成一条，所以我们
+     只在「键盘没弹出」时才更新，并且始终取较大值兜底。 */
+  let lastFullH = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
   function setVH(){
-    const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-    document.documentElement.style.setProperty('--vh', h + 'px');
+    const vv = window.visualViewport;
+    const vh = vv ? vv.height : window.innerHeight;
+    const keyboardOpen = !!document.activeElement &&
+      /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (keyboardOpen) return;              /* 键盘开着，冻结布局高度 */
+    if (vh > lastFullH - 1) lastFullH = vh;
+    else if (vh < lastFullH - 120) return;  /* 骤降但不全是键盘？先不动 */
+    document.documentElement.style.setProperty('--vh', lastFullH + 'px');
   }
   setVH();
   window.addEventListener('resize', setVH);

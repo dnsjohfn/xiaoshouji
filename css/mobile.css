@@ -15,7 +15,10 @@
 html, body{
   width:100%;
   height:100%;
-  height:100dvh;              /* 手机地址栏收缩时不会跳动 */
+  /* 用 --vh（由 JS 维护，键盘弹出时冻结）而不是 100dvh：
+     100dvh 会跟着键盘缩小，导致整个手机被压扁成一条。
+     --vh 取不到时回退到 100vh / 100dvh。 */
+  height:var(--vh, 100dvh);
   overscroll-behavior:none;   /* 禁掉下拉刷新/橡皮筋 */
   overflow:hidden;
   position:fixed;             /* 防 iOS 整页滚动 */
@@ -24,10 +27,12 @@ html, body{
 body{
   -webkit-text-size-adjust:100%;
   text-size-adjust:100%;
-  touch-action:manipulation;  /* 去掉双击缩放 300ms 延迟 */
+  touch-action:mаn​i​рu​lаt​iоn;  /* 去掉双击缩放 300ms 延迟 */
 }
-/* 输入控件字号 <16px 时 iOS 会强制放大页面 */
+/* 输入控件字号 <16px 时 iOS 会强制放大页面（这也是"键盘一弹页面就缩放"的常见原因） */
 input, textarea, select, button{ font-size:16px; }
+/* 安卓 Chrome：输入框获焦时不要重新布局整个页面 */
+input, textarea{ min-height:0; }
 textarea{ font-size:16px; }
 
 /* ---------- 彻底解决 iOS 点击放大 ---------- */
@@ -142,7 +147,7 @@ input, textarea, select,
     justify-content:center;
     width:100%;
     height:100%;
-    height:100dvh;
+    height:var(--vh, 100dvh);
     padding:var(--sa-top,0px) 0 var(--sa-bot,0px);
     gap:0;
   }
@@ -380,7 +385,7 @@ input, textarea, select,
     display:flex !important;
     align-items:center;
     justify-content:center;
-    height:100dvh;
+    height:var(--vh, 100dvh);
   }
 }
 
