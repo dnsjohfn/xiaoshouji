@@ -111,6 +111,7 @@ const Chat = (() => {
     const qb = document.getElementById('qq-back');
     if (qb) qb.onclick = () => { Phone.goHome(); };
     document.getElementById('appview').classList.add('active');
+    document.body.classList.add('in-app');   /* 让系统状态栏让位给应用标题栏 */
     setTimeout(()=>{ const l = document.getElementById('chat-list'); if (l) l.scrollTop = l.scrollHeight; }, 60);
   }
 

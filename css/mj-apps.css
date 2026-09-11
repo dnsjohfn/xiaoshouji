@@ -1025,7 +1025,7 @@
 .qq-back:hover{opacity:.7}
 .qq-back:active{transform:scale(.86)}
 /* 手机端把返回键点击区扩到 44px */
-@media (max-width:560px), (hover:none) and (pointer:coarse){
+@media (max-width:900px), (hover:none) and (pointer:coarse){
   .qq-back{
     width:40px;height:40px;font-size:30px;
     margin-left:-6px;

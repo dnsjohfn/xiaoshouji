@@ -99,14 +99,39 @@ input, textarea, select,
 }
 
 /* 安全区变量 */
-
 /* 桌面上的说明文字 + 背景光斑，在手机上隐藏 */
 .stage-hint{ display:none; }
 
 /* =========================================================
-   手机端：≤ 560px 或 触摸设备 → 全屏铺满
+   安全区兜底（无条件生效）
+   viewport-fit=cover 会让内容延伸到刘海/挖孔区域，
+   不管屏幕多宽都必须把顶部/底部内容推回安全区内，
+   否则真机上会看到系统状态栏和 App 自己的状态栏叠在一起。
    ========================================================= */
-@media (max-width:560px), (hover:none) and (pointer:coarse){
+.statusbar{
+  height:calc(44px + var(--sa-top)) !important;
+  padding-top:var(--sa-top) !important;
+  padding-left:calc(18px + var(--sa-left)) !important;
+  padding-right:calc(18px + var(--sa-right)) !important;
+}
+.appbar{
+  height:calc(58px + var(--sa-top)) !important;
+  padding-top:var(--sa-top) !important;
+  padding-left:calc(10px + var(--sa-left)) !important;
+  padding-right:calc(10px + var(--sa-right)) !important;
+}
+.lockscreen, .homescreen{
+  padding-top:calc(44px + var(--sa-top)) !important;
+}
+.homebar{
+  bottom:calc(6px + var(--sa-bot)) !important;
+}
+
+/* =========================================================
+   手机端：≤ 900px 或 触摸设备 → 全屏铺满
+   （900 而非 560：平板、折叠屏、部分全面屏手机的 CSS 宽度会到 700~900）
+   ========================================================= */
+@media (max-width:900px), (hover:none) and (pointer:coarse){
 
   #bg-blobs{ display:none; }        /* 手机全屏不需要装饰光斑 */
 
@@ -250,6 +275,12 @@ input, textarea, select,
   /* ---------- 聊天页（QQ 风格）手机优化 ---------- */
   /* 只有「进入聊天对话」时隐藏系统状态栏；会话列表页保留 */
   body.in-chatroom .statusbar{ display:none; }
+
+  /* 打开任意 App 时也隐藏系统状态栏：
+     .statusbar 是 absolute + z-index:60 盖在屏幕最顶上，
+     而应用有自己的标题栏（.appbar）也在顶部 → 会互相压住。
+     进应用后由 .appbar 承担顶栏职责，系统状态栏让位。 */
+  body.in-app .statusbar{ display:none; }
 
   /* 聊天对话里隐藏重复的系统顶栏（.appbar），
      QQ 头部自带返回/头像/在线状态，不需要两层 */
@@ -400,7 +431,7 @@ input, textarea, select,
 .sb-battery{ width:22px; height:11px; }
 
 /* 手机端状态栏高度与内距 */
-@media (max-width:560px), (hover:none) and (pointer:coarse){
+@media (max-width:900px), (hover:none) and (pointer:coarse){
   .statusbar{ font-size:12.5px; }
 }
 
@@ -444,11 +475,15 @@ input, textarea, select,
   overflow:hidden;
 }
 
-/* --- 右上角天气卡：绝对定位，不占文档流 --- */
+/* --- 右上角天气卡：靠右、参与文档流 ---
+   之前用 position:absolute + 固定 top，时钟靠 padding 猜它多高，
+   结果矮屏/大屏手机上两者会叠在一起（天气卡压住日期）。
+   改成普通流 + align-self:flex-end：时钟自然排在它下面，永不重叠。 */
 .hs-weather{
-  position:absolute;
-  top:calc(32px + var(--sa-top,0px));
-  right:16px;
+  align-self:flex-end;
+  position:relative;
+  top:auto;
+  margin:6px 0 0;
   width:min(54%,196px);
   padding:12px 14px 13px;border-radius:20px;
   background:rgba(22,26,36,.62);
@@ -458,17 +493,18 @@ input, textarea, select,
   -webkit-backdrop-filter:blur(22px) saturate(1.35);
   color:#fff;
   z-index:3;
+  flex:none;
+  max-height:46vh;overflow:hidden;
 }
 .hw-range,.hw-air{white-space:nowrap}
 
-/* --- 大时钟：占据天气卡下方整块空区并垂直居中 --- */
+/* --- 大时钟：天气卡下方，占满剩余空间并垂直居中 --- */
 .hs-clock{
-  flex:1 1 0%;
-  min-height:96px;
+  flex:1 1 auto;
+  min-height:88px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:0;
-  /* 顶部避让天气卡高度：随屏幕高度缩放，矮屏自动收紧 */
-  padding:min(112px, 12.8vh) 0 0;
+  padding:clamp(10px, 2.5vh, 28px) 0 0;   /* 只留一点呼吸感，不再猜天气卡高度 */
   margin:0;
   text-align:center;pointer-events:none;
 }
@@ -592,7 +628,7 @@ input, textarea, select,
   .hw-range,.hw-air{font-size:10.5px}
   .hw-ico svg{width:22px;height:22px}
 
-  .hs-clock{padding:min(126px, 19.8vh) 0 0}
+  .hs-clock{padding:8px 0 0}
   .hs-clock .hc-date{font-size:13px}
   .hs-clock .hc-time{font-size:clamp(40px,13vw,60px)}
 
@@ -613,7 +649,7 @@ input, textarea, select,
   .hw-temp{font-size:26px;margin:2px 0 1px}
   .hw-range,.hw-air{font-size:10px}
   .hw-ico svg{width:20px;height:20px}
-  .hs-clock{padding:min(112px, 17.5vh) 0 0}
+  .hs-clock{padding:6px 0 0}
   .hs-clock .hc-time{font-size:clamp(30px,10.5vw,46px)}
   .app-ico .sq{width:min(100%,40px);border-radius:12px}
   .app-ico .sq svg{width:19px;height:19px}
@@ -630,7 +666,7 @@ input, textarea, select,
   .hw-temp{font-size:23px}
   .hw-range,.hw-air{font-size:9.5px}
   .hw-ico svg{width:18px;height:18px}
-  .hs-clock{padding:min(114px, 20vh) 0 0}
+  .hs-clock{padding:5px 0 0}
   .hs-clock .hc-time{font-size:clamp(26px,9vw,36px)}
   /* 超窄屏（iPhone SE 等）：天气卡进一步收紧，时钟避让减半 */
   .hs-weather{width:min(50%,150px);padding:7px 10px 8px;border-radius:14px}

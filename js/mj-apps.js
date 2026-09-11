@@ -1375,10 +1375,13 @@ const Apps = {
     else if (id === 'memory') Memory.render();
     else if (id === 'play') Play.render();
     else if (id === 'maker') Maker.render();
+    /* 打开了应用 → 系统状态栏让位给应用标题栏（否则两层会叠在一起） */
+    document.body.classList.add('in-app');
     Phone.haptic(10);
   },
   close(){
     document.getElementById('appview').classList.remove('active');
+    document.body.classList.remove('in-app');
     if (window.Phone && Phone.showHome) Phone.showHome();
     Chat.close();
     Phone.renderHome();
