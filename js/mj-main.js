@@ -272,10 +272,14 @@
     setInterval(tick, 15000);
   })();
 
-  /* ---------- 首次进入 ---------- */
+  /* ---------- 首次进入 ----------
+     不再由预设角色自动发消息（那属于"编排剧情"）。
+     没有角色时，用系统提示引导去【制作人】建人设。 */
   if (!localStorage.getItem('xmj.greeted')){
     localStorage.setItem('xmj.greeted', '1');
-    setTimeout(()=> Phone.banner('xu', '醒了？醒了就回消息。', 'msg'), 1600);
+    setTimeout(()=>{
+      if (!Phone.cur()) Phone.toast('去【制作人】建一个人设，他就能跟你聊天了');
+    }, 1600);
   }
 
   /* =========================================================
@@ -287,11 +291,13 @@
   );
   function idleMinutes(){ return (Date.now() - lastUserAct) / 60000; }
 
-  setInterval(()=>{
+  setInterval(async ()=>{
     if (!Phone.S.unlocked) return;
     const id = Phone.S.activeChar;
+    if (!id) return;
     const s = Phone.st(id);
     const c = Phone.char(id);
+    if (!c) return;
     const idle = idleMinutes();
     const hr = new Date().getHours();
     const late = hr >= 23 || hr < 5;
@@ -300,8 +306,9 @@
     const talks = Phone.talkCount(id);
     const gap = Math.max(25, 90 - Math.min(60, talks)) / 60;   // 分钟
     if (idle > gap && Math.random() < .55){
+      const m = await Engine.proactive(c);
+      if (!m) return;                    /* 没 API / 生成失败 → 不发，不编剧情 */
       lastUserAct = Date.now() - gap * 60000 * .6;
-      const m = Engine.proactive(c);
       Chat.push(id, Object.assign({}, m, { from:'ta' }));
       s.unread++;
       Phone.save();
@@ -320,13 +327,15 @@
   }, 30000);
 
   /* 没在聊天时，未读堆到 3 条会追加"查岗" */
-  setInterval(()=>{
+  setInterval(async ()=>{
     if (!Phone.S.unlocked) return;
     const id = Phone.S.activeChar;
+    if (!id) return;
     const s = Phone.st(id);
     if (Chat.isOpen() && Chat.cur === id) return;
     if (s.unread >= 3 && Math.random() < .4){
-      const m = Engine.proactive(Phone.char(id));
+      const m = await Engine.proactive(Phone.char(id));
+      if (!m) return;                    /* 没 API / 生成失败 → 不发 */
       Chat.push(id, Object.assign({}, m, { from:'ta' }));
       s.unread++; Phone.save();
       Phone.banner(id, m.t === 'voice' ? '[语音] ' + m.text : String(m.v||''), 'msg');

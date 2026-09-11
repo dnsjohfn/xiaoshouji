@@ -352,56 +352,25 @@ const Engine = (() => {
     return { mood, reply };
   }
 
-  /* ---------- 本地引擎：生成回复 ---------- */
+  /* ---------- 本地引擎：生成回复 ----------
+     没有在线模型时，不再编造角色台词（那就成了"自动剧情"）。
+     这里只诚实地告诉用户：需要联网 / 填 Key 才能对话。 */
   function localReply(char, text){
-    const a = analyze(char, text);
-    const m = recall(char.id);
-
-    /* 普通 AI 模式（没设人设）：离线时给不出真正的问答，
-       就诚实说明需要联网/填 Key，不硬编造一个"角色"出来 */
+    if (!char){
+      return { t:'text', v:'（还没有角色。去【制作人】里建一个人设，我才能跟你聊天。）' };
+    }
     if (!hasPersona(char)){
       return {
         t:'text',
         v:'（现在还没连上在线模型，我暂时没法正常回答。到【设置】里填一下 API，我就能像普通 AI 那样跟你对话了。）'
       };
     }
-
-    let moodNow = m.mood + a.mood;
-    if (m.turns < 2 && a.mood === 0) moodNow += 1;
-
-    /* 兜底：人设卡若缺 lines（导入/历史数据），给一套通用台词，别崩 */
-    const L = (char && char.lines) || {};
-    const bucket = L.cold && moodNow <= -3 ? L.cold
-      : L.sweet && moodNow >= 6 ? L.sweet
-      : L.warm && (moodNow >= 2 || m.turns > 14) ? L.warm
-      : (L.normal || ['嗯，我在。', '然后呢？', '你说。']);
-
-    if (a.reply) return { t:'text', v:a.reply };
-
-    // 偶尔提一句记住的事
-    const fObj = m.facts[m.facts.length-1];
-    const f = fObj && (fObj.t || fObj);
-    if (f && Math.random() < .22){
-      return { t:'text', v: `${pick(['你不是说过','你上次说','我记得','嗯——你说过'])}${String(f).replace(/^[^：]*：/,'')}的事。` };
-    }
-
-    // 偶尔插入语音条
-    if (Math.random() < .16 && char.voice && char.voice.length){
-      const v = pick(char.voice);
-      return { t:'voice', sec: v.sec, text: v.text };
-    }
-
-    // 偶尔夹一条"动作"气泡
-    if (Math.random() < .12){
-      const acts = [
-        '把手机贴在耳朵上，没说话。', '低头看了一眼时间，又抬眼。',
-        '手指在屏幕上停了几秒。', '打字，删掉，又打。', '把烟摁灭了。'
-      ];
-      return { t:'text', v: pick(bucket) + '\n' + pick(acts), _action: true };
-    }
-
-    return { t:'text', v: pick(bucket) };
+    return {
+      t:'text',
+      v:'（还没连上在线模型，所以' + (char.name || '他') + '现在说不了话。到【设置】里填一下 API 就好了。）'
+    };
   }
+
 
   /* ---------- 多协议适配 ----------
      不同服务商的接口格式只有四点差异：地址、请求体、鉴权头、响应解析。
@@ -820,8 +789,9 @@ const Engine = (() => {
     };
   }
 
-  /* 在线回复：按 token 预算装配上下文，保证不超模型窗口 */
-  async function onlineReply(char, history, text){
+  /* 在线回复：按 token 预算装配上下文，保证不超模型窗口
+     sysOverride：传了就用它当 system（主动消息 / 通话台词用），否则按人设自动拼 */
+  async function onlineReply(char, history, text, sysOverride){
     const p = proto();
     const src = history.slice(-HISTORY_WINDOW).filter(h => h.from === 'me').map(h => h.v || '').join(' ');
     /* 预算：窗口 - 输出预留 - system 大致占用 */
@@ -830,11 +800,11 @@ const Engine = (() => {
 
     /* system 也吃预算：先按"瘦身"档建一次，若太胖再砍记忆条数 */
     let sysOpts = { hotWords: autoKeys(src || text) };
-    let system = buildSystem(char, sysOpts);
+    let system = sysOverride || buildSystem(char, sysOpts);
     let sysTok = estimateTokens(system);
     /* system 最多占 40% 预算，超了就把 facts 限量收紧 */
     const sysCap = Math.max(300, Math.floor(usable * 0.4));
-    if (sysTok > sysCap){
+    if (!sysOverride && sysTok > sysCap){
       system = buildSystem(char, Object.assign({}, sysOpts, { maxFacts: 4, summaryMax: 400 }));
       sysTok = estimateTokens(system);
     }
@@ -999,34 +969,56 @@ ${moodTxt}${facts}${past}
     return r;
   }
 
-  /* ---------- 主动消息 ---------- */
-  function proactive(char){
-    const m = recall(char.id);
-    const L = (char && char.lines) || {};
-    const pool = (m.mood >= 4 && L.warm) ? L.warm
-      : (m.mood <= -3 && L.cold) ? L.cold
-      : (L.normal || ['在干嘛？', '睡了吗？', '在忙吗？']);
-    const r = Math.random();
-    if (r < .18 && char.voice && char.voice.length){
-      const v = pick(char.voice);
-      return { t:'voice', sec:v.sec, text:v.text };
+  /* ---------- 主动消息 ----------
+     角色可以自己来找你说话（保留"自主发消息"的能力），
+     但内容由在线模型生成，不再从编排好的台词库里抽。
+     没有 API / 生成失败时不发消息——宁可不说话，也不编剧情。 */
+  async function proactive(char){
+    if (!char) return null;
+    if (!(hasKey() && cfg.onlineMode !== 'never')) return null;
+    try{
+      const m = recall(char.id);
+      const sys = (buildSystem(char) || '') +
+        `\n现在是对方没有主动找你的时候，你想主动发一条消息过去。` +
+        `结合你们的过往和此刻的心情，说一句自然、简短、像是突然想起对方的话。` +
+        `只输出这一条消息的内容，1-2 句，不要解释、不要写旁白、不要用引号包起来。`;
+      const r = await onlineReply(char, [], '（主动发一条消息）', sys);
+      const text = String((r && r.v) || '').trim();
+      if (!text) return null;
+      return { t:'text', v: text };
+    }catch(e){
+      return null;   /* 发不出去就算了，不硬编台词 */
     }
-    if (r < .32) return { t:'text', v: pick(['在干嘛？', '睡了吗？', '怎么不回我。', '人呢。', '你是不是在忙。', '……']) };
-    return { t:'text', v: pick(pool) };
   }
 
-  function callLine(char, stage){
-    const V = {
-      open: ['……喂。', '嗯，我在。', '喂？', '你终于接了。'],
-      mid: ['你那边怎么这么安静。', '别挂，我就想听你说说话。', '今天发生什么事了吗。', '我这边也是，刚忙完。', '……嗯，你说。'],
-      soft: ['声音再近一点。', '别急着挂。', '我想你了，这话我说得出口。', '嗯——我在听。'],
-      end: ['那就这样。', '挂了。哦不对，你先挂。', '睡吧。', '我等你明天来找我。']
+  /* ---------- 通话台词 ----------
+     同样交给在线模型；没有 API 时用最朴素的语气词顶着，
+     保证通话界面不至于完全空着。 */
+  async function callLine(char, stage){
+    const bare = {
+      open: '……喂。',
+      mid: '嗯，你说。',
+      soft: '嗯——我在听。',
+      end: '那就这样，挂了。'
     };
-    const pool = V[stage] || V.mid;
-    let v = pick(pool);
-    if (stage === 'open' && char.id === 'qi') v = pick(['诶诶诶是我呀！', '嘿嘿，听到你声音啦！', '喂喂喂——听得见吗？']);
-    if (stage === 'open' && char.id === 'lin') v = pick(['嗯——是我。', '喂，听得见吗？', '嗯，我在。']);
-    return v;
+    if (!char) return bare[stage] || bare.mid;
+    if (!(hasKey() && cfg.onlineMode !== 'never')) return bare[stage] || bare.mid;
+    try{
+      const guide = {
+        open: '你刚接起电话，说一句开场的话。',
+        mid: '你正在电话里和对方聊天，接一句自然的话。',
+        soft: '电话里气氛正好，说一句温柔的话。',
+        end: '准备挂电话了，说一句收尾的话。'
+      }[stage] || '接一句自然的话。';
+      const sys = (buildSystem(char) || '') +
+        `\n${guide}` +
+        `\n这是"打电话"的语音台词，要口语、短、像真的在电话里说话。只输出这句话本身，不加旁白、不加引号。`;
+      const r = await onlineReply(char, [], '（电话中）', sys);
+      const text = String((r && r.v) || '').trim();
+      return text || bare[stage] || bare.mid;
+    }catch(e){
+      return bare[stage] || bare.mid;
+    }
   }
 
   return {

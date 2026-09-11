@@ -15,8 +15,16 @@ const Chat = (() => {
   /* ---------------- 会话列表 ---------------- */
   function renderList(){
     const body = document.getElementById('app-body');
+    const list = Phone.allChars();
+    if (!list.length){
+      body.innerHTML = '<div style="padding:14px">' +
+        '<div class="empty-tip"><span class="big ico-big">' + window.Icons.svg('chat', 40) + '</span>' +
+        '还没有人住在手机里<br><span style="font-size:12px;opacity:.65">去【制作人】里建一个人设，就能开始聊天了</span></div>' +
+        '</div>';
+      return;
+    }
     let html = '<div style="padding:14px">';
-    Phone.allChars().forEach(c => {
+    list.forEach(c => {
       const s = Phone.st(c.id);
       const last = s.msgs[s.msgs.length-1];
       const lastTxt = last
@@ -50,6 +58,7 @@ const Chat = (() => {
        会话列表页仍要显示（否则返回键会顶到状态栏位置） */
     document.body.classList.add('in-chatroom');
     const c = Phone.char(id);
+    if (!c){ return; }                 /* 没有角色就不进对话页 */
     const s = Phone.st(id);
     s.unread = 0;
     s.lastSeen = Date.now();
@@ -492,8 +501,9 @@ const Chat = (() => {
       busy = false;
 
       if (Math.random() < .3){
-        setTimeout(()=>{
-          const extra = Engine.proactive(Phone.char(id));
+        setTimeout(async ()=>{
+          const extra = await Engine.proactive(Phone.char(id));
+          if (!extra) return;          /* 没 API / 生成失败 → 不补发第二条 */
           typing(true);
           setTimeout(()=>{
             typing(false);

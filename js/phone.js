@@ -13,15 +13,11 @@ const Phone = (() => {
     theme: 'rose',
     wallpaper: '',        /* 锁屏壁纸（dataURL） */
     homeWallpaper: '',    /* 桌面壁纸（dataURL）；空则跟随锁屏 */
-    activeChar: 'xu',
+    activeChar: '',       /* 由用户自建的角色接管（没有预设角色） */
     meName: '我',         /* 我自己显示的名字 */
     meAvatar: '',         /* 我自己的头像（dataURL）；空则用文字 */
     usedAt: Date.now(),
-    chars: {
-      xu:  { unread: 0, msgs: [], photos: [], diary: [], calls: [], lastSeen: 0 },
-      lin: { unread: 0, msgs: [], photos: [], diary: [], calls: [], lastSeen: 0 },
-      qi:  { unread: 0, msgs: [], photos: [], diary: [], calls: [], lastSeen: 0 }
-    },
+    chars: {},            /* 每个角色的会话状态，按 id 惰性创建 */
     customCards: []
   };
 
@@ -31,10 +27,16 @@ const Phone = (() => {
     try{
       const raw = localStorage.getItem(KEY);
       S = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT));
-      Object.keys(DEFAULT.chars).forEach(k => {
-        S.chars[k] = Object.assign(JSON.parse(JSON.stringify(DEFAULT.chars[k])), S.chars[k] || {});
-      });
+      S.chars = S.chars || {};
+      /* 兼容旧存档里残留的预设角色状态：只保留用户自建卡片对应的记录 */
       S.customCards = S.customCards || [];
+      const known = {};
+      S.customCards.forEach(c => { if (c && c.id) known[c.id] = 1; });
+      Object.keys(S.chars).forEach(k => { if (!known[k]) delete S.chars[k]; });
+      /* 若活跃角色已被删除，回退到第一个自建角色（可能为空） */
+      if (!S.activeChar || !known[S.activeChar]){
+        S.activeChar = (S.customCards[0] && S.customCards[0].id) || '';
+      }
       if (typeof S.homeWallpaper !== 'string') S.homeWallpaper = '';
       if (typeof S.meAvatar !== 'string') S.meAvatar = '';
       if (typeof S.meName !== 'string') S.meName = '我';
@@ -46,14 +48,19 @@ const Phone = (() => {
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
   function reset(){ S = JSON.parse(JSON.stringify(DEFAULT)); save(); }
 
-  /* ---------- 角色访问 ---------- */
+  /* ---------- 角色访问 ----------
+     没有预设角色：所有角色都来自用户自建卡片（customCards）。 */
   function allChars(){
-    return Object.keys(CHARS).map(k => CHARS[k]).concat(S.customCards || []);
+    return (S.customCards || []).slice();
   }
-  function char(id){ return allChars().find(c => c.id === id) || CHARS.xu; }
+  function char(id){
+    const list = allChars();
+    return list.find(c => c && c.id === id) || list[0] || null;
+  }
   function cur(){ return char(S.activeChar); }
   function st(id){
     id = id || S.activeChar;
+    if (!id) return { unread:0, msgs:[], photos:[], diary:[], calls:[], lastSeen:0 };
     return S.chars[id] || (S.chars[id] = { unread:0, msgs:[], photos:[], diary:[], calls:[], lastSeen:0 });
   }
 
@@ -499,19 +506,30 @@ const Phone = (() => {
   /* ---------- 桌面渲染 ---------- */
   function renderHome(){
     const c = cur();
-    const s = st(c.id);
+    const s = c ? st(c.id) : { msgs: [], unread: 0 };
     const hr = new Date().getHours();
     const greet = hr < 5 ? '还没睡？' : hr < 11 ? '早上好' : hr < 14 ? '中午好' : hr < 18 ? '下午好' : hr < 23 ? '晚上好' : '夜里的第几个消息';
-    document.getElementById('hs-greet').textContent = greet;
-    const talks = talkCount(s.id !== undefined ? s.id : S.activeChar);
-    const love = document.getElementById('ls-love');
-    if (love) love.innerHTML = talks > 0 ? `已经聊了 <b>${talks}</b> 句` : `${c.name} 在等你开口`;
-    const unread = unreadTotal();
-    document.getElementById('hs-sub').innerHTML = unread > 0
-      ? `他给你发了 <b>${unread}</b> 条消息`
-      : `${c.name} 在线，随时可以找他`;
+    const greetEl = document.getElementById('hs-greet');
+    if (greetEl) greetEl.textContent = greet;
 
-    renderHomeCards(c, s);
+    /* 还没有角色：桌面卡片显示引导语，不假装有人在线 */
+    const nameEl = document.getElementById('hs-name');
+    const love = document.getElementById('ls-love');
+    const sub = document.getElementById('hs-sub');
+    if (!c){
+      if (nameEl) nameEl.textContent = '还没有人住进来';
+      if (love) love.textContent = '去【制作人】建一个人设吧';
+      if (sub) sub.innerHTML = '建好之后，他就能跟你聊天了';
+      renderHomeCards(null, null);
+    } else {
+      const talks = talkCount(c.id);
+      if (love) love.innerHTML = talks > 0 ? `已经聊了 <b>${talks}</b> 句` : `${c.name} 在等你开口`;
+      const unread = s.unread || 0;
+      if (sub) sub.innerHTML = unread > 0
+        ? `他给你发了 <b>${unread}</b> 条消息`
+        : `${c.name} 在线，随时可以找他`;
+      renderHomeCards(c, s);
+    }
 
     const grid = document.getElementById('hs-grid');
     if (!grid) return;

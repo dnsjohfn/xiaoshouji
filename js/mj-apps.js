@@ -130,13 +130,13 @@ const Call = (() => {
     setTimeout(()=>{ if (target === charId) connect(); }, 1600 + Math.random()*1400);
   }
 
-  function connect(){
+  async function connect(){
     const c = Phone.char(target);
     document.getElementById('call-status').textContent = '通话中';
     const t = document.getElementById('call-timer');
     t.hidden = false; t.textContent = '00:00';
     Phone.blurp();
-    addCaption(c.name, Engine.callLine(c, 'open'));
+    addCaption(c.name, await Engine.callLine(c, 'open'));
     timer = setInterval(tick, 1000);
     /* 接通后**自动开启**语音转文字，不用用户去点麦克风 */
     if (window.CallVoice && CallVoice.supported()){
@@ -149,13 +149,13 @@ const Call = (() => {
 
   const MY_REPLIES = ['嗯，我在。', '我也想你。', '今天有点累。', '你说。', '别挂…', '（沉默）'];
 
-  function loop(){
+  async function loop(){
     if (!document.getElementById('callview').classList.contains('active')) return;
     /* 语音转文字开着的时候，让对话跟着你说的话走，
        别再用自动循环塞话，否则会打断你 */
     if (window.CallVoice && CallVoice.isRunning()) return;
     const c = Phone.char(target);
-    addCaption(c.name, Engine.callLine(c, secs < 20 ? 'mid' : 'soft'));
+    addCaption(c.name, await Engine.callLine(c, secs < 20 ? 'mid' : 'soft'));
     setTimeout(showReplies, 1100);
   }
 
@@ -239,9 +239,9 @@ const Call = (() => {
       b.onclick = ()=>{
         addCaption('你', b.textContent, true);
         Phone.sendSfx();
-        setTimeout(()=>{
+        setTimeout(async ()=>{
           if (!target) return;
-          addCaption(Phone.char(target).name, Engine.callLine(Phone.char(target), 'soft'));
+          addCaption(Phone.char(target).name, await Engine.callLine(Phone.char(target), 'soft'));
         }, 900 + Math.random()*800);
       };
     });
@@ -1065,7 +1065,10 @@ const Settings = {
         Phone.S.customCards = (Phone.S.customCards || []).filter(x => x.id !== id);
         delete Phone.S.chars[id];
         Engine.forgetAll(id);   /* 只清这个角色的记忆 */
-        if (Phone.S.activeChar === id) Phone.S.activeChar = 'xu';
+        if (Phone.S.activeChar === id){
+          const rest = Phone.S.customCards || [];
+          Phone.S.activeChar = (rest[0] && rest[0].id) || '';
+        }
         Phone.save();
         Settings.renderCards(); Settings.renderStats(); Phone.renderHome();
         Phone.toast('已删除 ' + c.name);
@@ -1408,6 +1411,12 @@ window.APPS = APPS;
 window.APP_TITLES = APP_TITLES;
 
 const Apps = {
+  /* 需要"有一个角色"才能用的应用：没角色就显示引导页 */
+  NEEDS_CHAR: { notes:1, memory:1, play:1, music:1 },
+  emptyHint(body, text){
+    body.innerHTML = '<div class="empty-tip"><span class="big ico-big">' +
+      w.Icons.svg('mask', 40) + '</span>' + text + '</div>';
+  },
   open(id){
     const title = APP_TITLES[id] || '聊天';
     document.getElementById('app-title').textContent = title;
@@ -1415,6 +1424,16 @@ const Apps = {
     if (window.Phone && Phone.hideHomeFor) Phone.hideHomeFor();
     document.getElementById('appview').classList.add('active');
     document.getElementById('app-body').scrollTop = 0;
+
+    /* 没有角色时，这些应用没有意义 → 引导去建人设 */
+    if (Apps.NEEDS_CHAR[id] && !Phone.cur()){
+      Apps.emptyHint(document.getElementById('app-body'),
+        '还没有角色<br><span style="font-size:12px;opacity:.65">先去【制作人】建一个人设吧</span>');
+      document.body.classList.add('in-app');
+      Phone.haptic(10);
+      return;
+    }
+
     if (id === 'chat') Chat.renderList();
     else if (id === 'calls') Calls.render();
     else if (id === 'gallery') Gallery.render();
@@ -1785,7 +1804,7 @@ const Maker = {
         <div class="mk-txt">
           这台小手机是一个可以在浏览器里跑的小玩具。<br>
           所有聊天记录、背景都只存在你自己的设备上，不上传任何服务器。<br>
-          不接 API 也能玩，接了 API 他会更聪明。
+          对话内容全部由你接入的 AI 模型生成，手机本身不预置任何剧情。
         </div>
         <div class="mk-ver">v1.0 · 本地运行 · 零依赖</div>
         <div class="btn-row" style="justify-content:center;margin-top:4px">
@@ -1795,7 +1814,7 @@ const Maker = {
       <div class="card mk-wrap" style="margin-top:12px">
         <div class="mk-h">鸣谢</div>
         <div class="mk-txt">
-          角色：薛沉 / 林砚 / 祁野<br>
+          角色：全部由你在【制作人】里自建，或导入角色卡<br>
           引擎：内置人格引擎 + OpenAI 兼容接口<br>
           图标：自制 SVG 线稿图标集
         </div>
