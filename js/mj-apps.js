@@ -336,52 +336,104 @@ const Calls = {
   }
 };
 
-/* ================= 相册 ================= */
+/* ================= 相册（只放用户自己上传的照片） ================= */
+const GALLERY_KEY = 'xmj.gallery.v1';
 const Gallery = {
+  all(){
+    try{ return JSON.parse(localStorage.getItem(GALLERY_KEY) || '[]') || []; }
+    catch(e){ return []; }
+  },
+  save(list){
+    try{ localStorage.setItem(GALLERY_KEY, JSON.stringify(list)); return true; }
+    catch(e){ Phone.toast('存储已满，先删掉几张吧'); return false; }
+  },
+  add(url){
+    const list = Gallery.all();
+    list.unshift({ id: 'g' + Date.now() + Math.random().toString(36).slice(2, 6), url, at: Date.now() });
+    if (Gallery.save(list)) Phone.toast('已添加');
+  },
+  remove(id){
+    Gallery.save(Gallery.all().filter(p => p.id !== id));
+  },
   render(){
     const body = document.getElementById('app-body');
-    let html = '<div class="gal-grid">';
-    let total = 0;
-    Phone.allChars().forEach(c => {
-      const s = Phone.st(c.id);
-      const talks = Phone.talkCount(c.id);
-      (c.photos || []).forEach((p, i) => {
-        total++;
-        const ok = talks >= (p.at || 0);
-        html += `<div class="gal-cell ${ok?'':'lock'}" data-c="${c.id}" data-i="${i}">
-          <span>${ok ? p.icon : w.Icons.svg('lock', 26)}</span>
-          <span class="gal-cap">${ok ? Phone.escapeHtml(p.title) : '未解锁'}</span>
-        </div>`;
+    const list = Gallery.all();
+
+    let html = '<div class="gal-top">' +
+        '<button class="gal-add" id="gal-add">' + w.Icons.svg('plus', 17) + '添加照片</button>' +
+        '<span class="gal-num">' + list.length + ' 张</span>' +
+      '</div>';
+
+    if (list.length){
+      html += '<div class="gal-grid">';
+      list.forEach((p, i) => {
+        html += '<div class="gal-cell gal-photo" data-i="' + i + '">' +
+            '<img src="' + p.url + '" alt="">' +
+            '<button class="gal-del" data-del="' + p.id + '" aria-label="删除">' + w.Icons.svg('close', 13) + '</button>' +
+          '</div>';
       });
+      html += '</div>';
+    }else{
+      html += '<div class="empty-tip"><span class="big ico-big">' + w.Icons.svg('gallery', 40) +
+        '</span>相册还是空的<br><span style="font-size:12px;opacity:.65">点上面的按钮，把你喜欢的照片放进来</span></div>';
+    }
+
+    body.innerHTML = html + '<div class="gal-view" id="gal-view">' +
+        '<button class="gal-close" id="gal-close" aria-label="关闭">' + w.Icons.svg('close', 18) + '</button>' +
+        '<img class="gal-shot" id="gal-shot" alt="">' +
+      '</div>' +
+      '<input type="file" id="gal-file" accept="image/*" multiple hidden>';
+
+    /* 上传 */
+    const file = document.getElementById('gal-file');
+    document.getElementById('gal-add').onclick = () => { Phone.haptic(10); file.click(); };
+    file.onchange = async e => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      Phone.toast('正在处理…');
+      for (const f of files){
+        try{
+          const url = await Settings.readImage(f, 1200);   /* 压缩后再存，别撑爆配额 */
+          Gallery.add(url);
+        }catch(err){ Phone.toast('这张图读不了'); }
+      }
+      e.target.value = '';
+      Gallery.render();
+    };
+
+    /* 删除 */
+    body.querySelectorAll('[data-del]').forEach(btn => {
+      btn.onclick = ev => {
+        ev.stopPropagation();
+        const id = btn.dataset.del;
+        UI.confirm({
+          title: '删除照片', text: '删掉之后就找不回来了。',
+          okText: '删除', danger: true
+        }).then(ok => {
+          if (!ok) return;
+          Gallery.remove(id);
+          Gallery.render();
+          Phone.haptic(14);
+          Phone.toast('已删除');
+        });
+      };
     });
-    html += '</div>';
-    if (!total) html = `<div class="empty-tip"><span class="big ico-big">${w.Icons.svg('gallery', 40)}</span>相册还是空的</div>`;
-    body.innerHTML = html + `<div class="gal-view" id="gal-view">
-        <button class="gal-close" id="gal-close" aria-label="关闭">${w.Icons.svg('close', 18)}</button>
-        <div class="gal-shot" id="gal-shot">${w.Icons.svg('gallery', 48)}</div>
-        <div class="gal-text" id="gal-text"></div>
-      </div>`;
-    body.querySelectorAll('.gal-cell').forEach(el => {
+
+    /* 查看大图 */
+    body.querySelectorAll('.gal-photo').forEach(el => {
       el.onclick = () => {
-        const c = Phone.char(el.dataset.c);
-        const p = (c.photos || [])[+el.dataset.i];
-        if (Phone.talkCount(c.id) < (p.at || 0)){
-          Phone.toast(`和他聊到 ${p.at} 句才会解锁`);
-          Phone.haptic(30);
-          return;
-        }
-        const shot = document.getElementById('gal-shot');
-        shot.textContent = p.icon;
-        shot.style.background = `linear-gradient(150deg,${c.c1}55,${c.c2}22)`;
-        document.getElementById('gal-text').innerHTML =
-          `<b>${Phone.escapeHtml(p.title)}</b>${Phone.escapeHtml(p.text)}<br><span style="opacity:.5;font-size:11px">—— ${Phone.escapeHtml(c.name)}</span>`;
-        document.getElementById('gal-view').classList.add('active');
+        const p = Gallery.all()[+el.dataset.i];
+        if (!p) return;
+        const gv = document.getElementById('gal-view');
+        document.getElementById('gal-shot').src = p.url;
+        gv.classList.add('active');
         Phone.haptic(10);
       };
     });
-    document.getElementById('gal-close').onclick = ()=> document.getElementById('gal-view').classList.remove('active');
-    const gv = document.getElementById('gal-view');
-    gv.onclick = e => { if (e.target === gv) gv.classList.remove('active'); };
+
+    document.getElementById('gal-close').onclick = () => document.getElementById('gal-view').classList.remove('active');
+    const gv2 = document.getElementById('gal-view');
+    gv2.onclick = e => { if (e.target === gv2) gv2.classList.remove('active'); };
   }
 };
 
@@ -1692,7 +1744,7 @@ const Play = {
     const rules = [
       { ico:'chat',   t:'和他聊天',     d:'点桌面「聊天」，随便说什么。他会记得你说过的话。' },
       { ico:'mask',   t:'自己扮演调教', d:'你写的人设决定他是什么样。想让他变，就改设定或直接在对话里教他。' },
-      { ico:'gallery',t:'解锁照片和日记', d:'聊得越多，相册和日记里解锁的内容越多。' },
+      { ico:'gallery',t:'相册',           d:'相册里放的是你自己上传的照片，随时可以增删。' },
       { ico:'call',   t:'给他打电话',   d:'聊天页右上角点通话，他会接，还能听到他说话。' },
       { ico:'palette',t:'换聊天背景',   d:'聊天页右上角调色盘，9 种背景，也能传自己的图。' },
       { ico:'user',   t:'换头像',       d:'设置→头像：你和他的都能换成图片，比文字更有感觉。' },

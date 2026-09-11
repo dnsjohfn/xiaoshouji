@@ -87,9 +87,6 @@ const Chat = (() => {
             <div class="who">${Phone.escapeHtml(c.name)}</div>
             <div class="state"><i class="dot"></i><span id="ch-state">在线</span></div>
           </div>
-          <div class="heart">
-            <span id="ch-lv"></span>
-          </div>
         </div>
         <div class="chat-list qq-list" id="chat-list"></div>
         <div class="qq-typing" id="qq-typing" hidden>
@@ -128,8 +125,6 @@ const Chat = (() => {
 
   function renderHead(){
     const s = Phone.st(opener);
-    const lv = document.getElementById('ch-lv');
-    if (lv) lv.textContent = '';
     Phone.renderHome();
   }
 

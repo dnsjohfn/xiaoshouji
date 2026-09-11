@@ -51,11 +51,6 @@
 .chat-head .state{font-size:11px;color:var(--txt-dim);display:flex;align-items:center;gap:4px}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block}
 .dot.off{background:#6b7280}
-.chat-head .heart{
-  margin-left:auto;font-size:11px;color:var(--txt-dim);display:flex;align-items:center;gap:5px;
-}
-.heart-bar{width:56px;height:5px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
-.heart-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s cubic-bezier(.22,1,.36,1)}
 
 /* 气泡 */
 .bg-row{display:flex;gap:8px;align-items:flex-end;animation:pop .32s cubic-bezier(.22,1.2,.4,1)}
@@ -150,11 +145,7 @@
 }
 .quick button:active{background:rgba(255,255,255,.18);color:var(--txt)}
 
-/* 好感度飘字 */
-.heart-fly{
-  position:absolute;right:22px;top:120px;font-size:15px;font-weight:700;color:var(--accent);
-  pointer-events:none;animation:fly 1.5s ease-out forwards;z-index:9;
-}
+/* 飘字动画（预留） */
 @keyframes fly{0%{opacity:0;transform:translateY(10px) scale(.8)}20%{opacity:1}100%{opacity:0;transform:translateY(-46px) scale(1.1)}}
 
 /* ============ 通话记录 ============ */
@@ -169,7 +160,16 @@
 .icon-miss{color:var(--bad)}
 
 /* ============ 相册 ============ */
-.gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px}
+.gal-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px}
+.gal-add{
+  display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:99px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+  font-size:13.5px;font-weight:600;transition:transform .15s;
+}
+.gal-add:active{transform:scale(.95)}
+.gal-add svg{width:17px;height:17px}
+.gal-num{font-size:12.5px;color:var(--txt-dim)}
+.gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px 4px}
 .gal-cell{
   position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;
   display:grid;place-items:center;font-size:26px;transition:transform .15s;
@@ -177,25 +177,25 @@
   border:1px solid var(--line);
 }
 .gal-cell:active{transform:scale(.95)}
-.gal-cap{
-  position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;font-size:10px;line-height:1.35;
-  background:linear-gradient(transparent,rgba(0,0,0,.82));text-align:left;
+.gal-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.gal-del{
+  position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;
+  display:grid;place-items:center;background:rgba(0,0,0,.55);color:#fff;
+  backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.2);
 }
-.gal-cell.lock{filter:grayscale(1) brightness(.55)}
-.gal-cell.lock::after{content:"🔒 好感度不足";position:absolute;font-size:10px;color:#fff}
+.gal-del svg{width:13px;height:13px}
+.gal-del:active{background:rgba(255,60,90,.85)}
 .gal-view{
   position:absolute;inset:0;z-index:20;background:rgba(6,4,10,.96);
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:60px 24px 40px;
 }
 .gal-view.active{display:flex;animation:fadeIn .3s}
 .gal-shot{
-  width:100%;aspect-ratio:1;border-radius:22px;display:grid;place-items:center;font-size:74px;
+  width:100%;max-height:76%;object-fit:contain;border-radius:22px;display:block;
   background:linear-gradient(150deg,rgba(255,255,255,.16),rgba(255,255,255,.04));
   border:1px solid var(--line);
 }
-.gal-text{font-size:13.5px;line-height:1.7;color:var(--txt-dim);text-align:center}
-.gal-text b{color:var(--txt);display:block;margin-bottom:6px;font-size:15px}
-.gal-close{position:absolute;top:56px;right:18px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.12);font-size:17px}
+.gal-close{position:absolute;top:56px;right:18px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:17px}
 
 /* ============ 日记本 ============ */
 .diary{padding:16px;display:grid;gap:14px}
@@ -517,13 +517,6 @@
   color:#6b7280!important;font-size:11.5px;margin-top:2px}
 .qq-head .state .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;
   box-shadow:0 0 6px #22c55e}
-.qq-head .heart{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
-  gap:4px;min-width:66px}
-.qq-head .heart > span:first-child{font-size:10.5px;color:#8b93a3;letter-spacing:.3px}
-.qq-head .heart-bar{width:64px;height:4px;border-radius:2px;overflow:hidden;
-  background:rgba(0,0,0,.10);display:block}
-.qq-head .heart-bar > i{display:block;height:100%;border-radius:2px;
-  background:linear-gradient(90deg,#ff5f8d,#8b5cf6);transition:width .4s ease}
 
 .qq-list{
   flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;

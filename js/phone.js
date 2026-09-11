@@ -57,10 +57,9 @@ const Phone = (() => {
     return S.chars[id] || (S.chars[id] = { unread:0, msgs:[], photos:[], diary:[], calls:[], lastSeen:0 });
   }
 
-  /* ---------- 亲密度已移除：改为按「聊天轮数」解锁内容 ----------
-     以前用好感度（heart）控制相册/日记/动态的解锁与主动消息频率，
-     现在用户自己扮演来调教 AI，不再需要系统打分。
-     保留 st() 上的 heart 字段只为兼容旧存档，不再读写其含义。 */
+  /* ---------- 亲密度已移除：改为按「聊天轮数」衡量熟悉度 ----------
+     主动消息频率、通话时机等只跟 talkCount 有关；
+     相册内容完全由用户自己上传，与聊天进度无关。 */
   function talkCount(id){
     const s = st(id);
     return (s.msgs || []).filter(m => m && m.from === 'me').length;

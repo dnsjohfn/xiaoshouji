@@ -657,7 +657,7 @@ body{
   opacity:.34;pointer-events:none;
 }
 
-/* 锁屏：人物消息卡 + 好感度 */
+/* 锁屏：人物消息卡 */
 .ls-person{
   display:flex;align-items:center;gap:11px;
   background:rgba(255,255,255,.11);
